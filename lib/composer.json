@@ -1,0 +1,10 @@
+{
+    "require": {
+        "zendframework/zend-escaper": "^2.6",
+        "zendframework/zend-stdlib": "^3.2",
+        "zendframework/zend-validator": "^2.12",
+        "phpoffice/phpword": "^0.17.0",
+        "zendframework/zend-barcode": "^2.7",
+        "rkorebrits/htmltoopenxml": "^0.1.9"
+    }
+}

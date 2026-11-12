@@ -1,0 +1,123 @@
+<?php
+function replace_newline($str){
+	$ret = preg_replace('/\r|\n/','\n',trim($str));
+	$ret = str_replace('\n','<br>',$ret);
+	$ret = str_replace('<br><br>','<br>',$ret);
+	return $ret;
+}
+
+function erm_tindakan_rawat_inap($idx,$tarif_id){
+	global $rmfile_path, $app_path;
+	
+	$templateklinik = new \PhpOffice\PhpWord\TemplateProcessor(dirname(__FILE__) . '\tindakan_rawat_jalan.docx');
+	
+	$qry_pasien = 'SELECT t_irna.IRNA_ID,t_irna.NOMR,t_irna.PEGAWAI_ID,m_pegawai.NAMA_PEGAWAI,
+				"" AS ASAL_PASIEN_ID,"" AS KET_ASAL_PASIEN,t_irna.RUANG_ID,m_jaminan.NAMA_JAMINAN,
+				m_pasien.NAMA_PASIEN,DATE_FORMAT(m_pasien.TGL_LAHIR,"%d-%m-%Y") AS TGL_LAHIR,
+				m_pasien.JNS_KELAMIN,m_pasien.ALAMAT,m_pasien.NIK,
+				DATE_FORMAT(t_irna.PASIEN_MASUK,"%d-%m-%Y %H:%i") AS PASIEN_MASUK,
+				t_irna.JENIS_BAYAR_ID,m_pasien.NO_TELEPON,
+				DATE_FORMAT(t_irna.TANGGAL_DAFTAR,"%d/%m/%Y") AS TANGGAL_DAFTAR,
+				m_ruang.NAMA_RUANG
+				FROM t_irna
+				INNER JOIN m_pasien ON (t_irna.NOMR = m_pasien.NOMR)
+				INNER JOIN m_jaminan ON (t_irna.JENIS_BAYAR_ID = m_jaminan.JAMINAN_ID)
+				INNER JOIN m_ruang ON (t_irna.RUANG_ID = m_ruang.RUANG_ID)
+				INNER JOIN m_pegawai ON (t_irna.PEGAWAI_ID = m_pegawai.PEGAWAI_ID)
+				WHERE t_irna.IRNA_ID = "' . $idx . '"';
+	$get_pasien = mysql_query($qry_pasien);
+	$dat_pasien = mysql_fetch_assoc($get_pasien);
+	$nomr = $dat_pasien['NOMR'];
+	$nama_pasien = $dat_pasien['NAMA_PASIEN'];
+	$tgl_lahir = $dat_pasien['TGL_LAHIR'];
+	$jns_kelamin = jenisKelamin($dat_pasien['JNS_KELAMIN']);
+	$alamat = $dat_pasien['ALAMAT'];
+	$nik = $dat_pasien['NIK'];
+	$jns_pembayaran = $dat_pasien['NAMA_JAMINAN'];
+	$jenis_bayar_id = $dat_pasien['JENIS_BAYAR_ID'];
+
+	$irja_id = $dat_pasien['IRNA_ID'];
+	$pegawai_id = $dat_pasien['PEGAWAI_ID'];
+	$asal_pasien_id = $dat_pasien['ASAL_PASIEN_ID'];
+	$ket_asal_pasien = $dat_pasien['KET_ASAL_PASIEN'];
+	$pasien_masuk = $dat_pasien['PASIEN_MASUK'];
+
+	$no_telepon = $dat_pasien['NO_TELEPON'];
+	$tgl_daftar = $dat_pasien['TANGGAL_DAFTAR'];
+	$nama_unit = $dat_pasien['NAMA_RUANG'];
+	$nama_dokter = $dat_pasien['NAMA_PEGAWAI'];
+
+	$umur = getUmurDaftar($tgl_lahir,$tgl_daftar);
+	
+	$templateklinik->setValue('nomor_rm', formatNomr($nomr));
+	$templateklinik->setValue('nama_pasien', htmlspecialchars($nama_pasien));
+	$templateklinik->setValue('tgl_lahir', htmlspecialchars($tgl_lahir));
+	$templateklinik->setValue('jenis_kelamin', htmlspecialchars($jns_kelamin));
+	$templateklinik->setValue('unit', htmlspecialchars($nama_unit));
+	$templateklinik->setValue('tgl_masuk', $pasien_masuk);
+	$templateklinik->setValue('nama_dokter', htmlspecialchars($nama_dokter));
+	$templateklinik->setValue('dicetak_oleh', '');
+	
+	$sql_tindakan = 'SELECT m_tarif.NAMA_TARIF,t_irna_tarif.HASIL_DIAGNOSA,
+		m_tarif.KODE_TARIF_GROUP 
+		FROM t_irna_tarif
+		INNER JOIN m_tarif ON (t_irna_tarif.TARIF_ID = m_tarif.TARIF_ID)
+		WHERE t_irna_tarif.IRNA_TARIF_ID = "' . $tarif_id . '"';
+	$get_tindakan = mysql_query($sql_tindakan) or die(mysql_error());	
+	$dat_tindakan = mysql_fetch_assoc($get_tindakan);
+	
+	$hasil = replace_newline($dat_tindakan['HASIL_DIAGNOSA']);
+	$toOpenXML = HTMLtoOpenXML::getInstance()->fromHTML($hasil);
+	$templateklinik->setValue('hasil_tindakan', $toOpenXML);
+	
+	$nama_tindakan = $dat_tindakan['NAMA_TARIF'];
+	if(in_array($dat_tindakan['KODE_TARIF_GROUP'],array('02','09','93'))) $nama_tindakan = 'Konsultasi';
+	if(in_array($dat_tindakan['KODE_TARIF_GROUP'],array('52'))) $nama_tindakan = 'Visite';
+	$templateklinik->setValue('nama_tindakan', htmlspecialchars(strtoupper($nama_tindakan)));
+	
+	if(!file_exists($rmfile_path . '/pdf/2/' . $nomr . '/' . $idx)){
+		@mkdir($rmfile_path . '/pdf/2/' . $nomr . '/' . $idx, 0700, true);
+	}
+
+	if(!file_exists($rmfile_path . '/doc/2/' . $nomr . '/' . $idx)){
+		@mkdir($rmfile_path . '/doc/2/' . $nomr . '/' . $idx, 0700, true);
+	}
+	
+	$nama_file = $nomr . '_' . $idx . $tarif_id . '_34';	
+	$templateklinik->saveAs($rmfile_path . '/doc/2/' . $nomr . '/' . $idx . '/' . $nama_file . '.docx');
+	
+	mysql_query('DELETE FROM t_rm_dokumen_file 
+				WHERE RAWAT_ID = "' . $idx . '"
+				AND JNS_PERAWATAN = "2"
+				AND JENIS_DOKUMEN_ID = "34"
+				AND ORDER_PENUNJANG = "' . $tarif_id . '"
+				AND NAMA_FILE = "' . $nama_file . '.pdf"') or die(mysql_error());
+	mysql_query('INSERT INTO t_rm_dokumen_file(JENIS_DOKUMEN_ID,NOMR,RAWAT_ID,JNS_PERAWATAN,
+				ORDER_PENUNJANG,NAMA_FILE,ST_SISTEM,TANGGAL,NAMA_PENUNJANG) 		
+				VALUES("34","' . $nomr . '","' . $idx . '","2",
+				"' . $tarif_id . '","' . $nama_file . '.pdf","1",STR_TO_DATE("' . $tgl_daftar . '","%d/%m/%Y"),
+				"' . $nama_tindakan . '")') or die(mysql_error());
+	
+	$source_file = $rmfile_path . '/doc/2/' . $nomr . '/' . $idx . '/' . $nama_file . '.docx';			
+	$source_file = str_replace('/','\\',$source_file);
+	$target_file = $rmfile_path . '/pdf/2/' . $nomr . '/' . $idx . '/' . $nama_file . '.pdf';
+	$target_file = str_replace('/','\\',$target_file);
+	
+	try{
+		$word = new COM("Word.Application") or die ("Could not initialise Object.");
+		$word->Visible = 0;
+		$word->DisplayAlerts = 0;
+		$word->Documents->Open($source_file,false,true);
+		if(file_exists($target_file)){
+			unlink($target_file);
+		}
+		$word->ActiveDocument->ExportAsFixedFormat($target_file, 17, false, 0, 0, 0, 0, 7, true, true, 2, true, true, false);
+		$word->Quit(false);
+		unset($word);
+	} catch (Exception $e) {
+		echo $e;
+	}
+	
+	
+}	
+?>

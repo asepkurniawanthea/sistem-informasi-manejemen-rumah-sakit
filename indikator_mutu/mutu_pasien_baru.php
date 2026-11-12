@@ -1,0 +1,288 @@
+<style>
+.list_isi{
+	height:550px;
+}
+</style>
+<?php
+include('shared/array_filter_report_tarif.php');
+$arr_tindakan = getStringArrayFilter('tindakan medik');
+
+$tgl_1 = '';
+if (isset($_SESSION['pasienbaru_tgl_1']))
+    $tgl_1 = $_SESSION['pasienbaru_tgl_1'];
+$tgl_2 = '';
+if (isset($_SESSION['pasienbaru_tgl_1']))
+    $tgl_2 = $_SESSION['pasienbaru_tgl_2'];
+if (isset($_GET['tgl_1'])) {
+    $tgl_1 = $_GET['tgl_1'];
+    $_SESSION['pasienbaru_tgl_1'] = $_GET['tgl_1'];
+}
+if (isset($_GET['tgl_2'])) {
+    $tgl_2 = $_GET['tgl_2'];
+    $_SESSION['pasienbaru_tgl_2'] = $_GET['tgl_2'];
+}
+
+$searchkey = '';
+if (isset($_SESSION['pasienbaru_searchkey']))
+		$searchkey = $_SESSION['pasienbaru_searchkey'];
+
+if (isset($_GET['searchkey'])) {
+    $searchkey = $_GET['searchkey'];
+	$_SESSION['pasienbaru_searchkey'] = $searchkey;
+}
+
+$ruang_id = '';
+if (isset($_SESSION['pasienbaru_ruang_id']))
+		$ruang_id = $_SESSION['pasienbaru_ruang_id'];
+
+if (isset($_GET['ruang_id'])) {
+    $ruang_id = $_GET['ruang_id'];
+	$_SESSION['pasienbaru_ruang_id'] = $ruang_id;
+}
+$unit_id = '';
+if (isset($_SESSION['pasienbaru_unit_id']))
+		$unit_id = $_SESSION['pasienbaru_unit_id'];
+
+if (isset($_GET['unit_id'])) {
+    $unit_id = $_GET['unit_id'];
+	$_SESSION['pasienbaru_unit_id'] = $unit_id;
+}
+
+$j_tanggal = '1';
+if (isset($_SESSION['pasienbaru_j_tanggal']))
+		$j_tanggal = $_SESSION['pasienbaru_j_tanggal'];
+
+if (isset($_GET['j_tanggal'])) {
+    $j_tanggal = $_GET['j_tanggal'];
+	$_SESSION['pasienbaru_j_tanggal'] = $j_tanggal;
+}
+
+$tgl_filter_1 = fieldDate($tgl_1);
+if (empty($tgl_1)) {
+    $tgl_filter_1 = 'CURRENT_DATE()';
+}
+$tgl_filter_2 = fieldDate($tgl_2);
+if (empty($tgl_2)) {
+    $tgl_filter_2 = $tgl_filter_1;
+}	
+?>
+<form name="search" method="get" action="index.php">
+    <table class="tableform" border="0">
+        <tr>
+            <td colspan="2"><input type="radio" name="j_tanggal" value="1" <?php if($j_tanggal == '1') echo 'checked="checked"'; ?>/>&nbsp;Tanggal Masuk
+			&nbsp;&nbsp;<input type="radio" name="j_tanggal" value="2" <?php if($j_tanggal == '2') echo 'checked="checked"'; ?> />&nbsp;Tanggal Keluar</td>
+			<td>Nomor MR/ Nama Pasien</td>
+            <td><input type="text" name="searchkey" id="searchkey" value="<?php echo $searchkey; ?>" class="text_dt" style="width:200px;"/></td>	
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+        </tr>
+		<tr>
+            <td>Tanggal</td>
+            <td><input type="text" name="tgl_1" id="tgl_1" value="<?php echo $tgl_1; ?>" size="15" class="text_dt" />
+                <img align="top" src="image/date.png" border="0"  onclick="showCal('Calendar6')"/></td>
+			<td>Ruang Rawat</td>
+            <td><select name="ruang_id" class="text_dt" style="width:210px;">
+				<option value=""> - </option>
+				<?php echo getBangsal($ruang_id); ?>
+			</select></td>	
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+        </tr>
+		<tr>
+			<td>S/d</td>
+            <td><input type="text" name="tgl_2" id="tgl_2" value="<?php echo $tgl_2; ?>" size="15" class="text_dt" />
+                <img align="top" src="image/date.png" border="0"  onclick="showCal('Calendar7')"/></td>
+			<td>Poliklinik/ IGD</td>
+			<td><select name="unit_id" class="text_dt" style="width:210px;">
+				<option value=""> - </option>
+				<?php echo getUnit('umumigd',$unit_id); ?>
+			</select></td>		
+			<td align="right" colspan="2"><input type="submit" value="cari" class="myButton" /></td>
+		</tr>
+    </table>
+    <input type="hidden" name="link" value="<?php echo $_REQUEST['link']; ?>" />
+</form>
+<br />
+<?php
+$tgl_filter_irja = '';
+$tgl_filter_irna = '';
+if($j_tanggal == '1'){
+	$tgl_filter_irja = 'AND t_irja.TANGGAL_DAFTAR >= ' . $tgl_filter_1 . ' AND t_irja.TANGGAL_DAFTAR <= ' . $tgl_filter_2 . '';
+	$tgl_filter_irna = 'AND t_irja.TANGGAL_DAFTAR >= ' . $tgl_filter_1 . ' AND t_irja.TANGGAL_DAFTAR <= ' . $tgl_filter_2 . '';
+}else{
+	$tgl_filter_irja = 'AND STR_TO_DATE(DATE_FORMAT(t_irja.PASIEN_KELUAR,"%d/%m/%Y"),"%d/%m/%Y") >= ' . $tgl_filter_1 . ' 
+				AND STR_TO_DATE(DATE_FORMAT(t_irja.PASIEN_KELUAR,"%d/%m/%Y"),"%d/%m/%Y") <= ' . $tgl_filter_2;
+	$tgl_filter_irna = 'AND STR_TO_DATE(DATE_FORMAT(t_irna.PASIEN_KELUAR,"%d/%m/%Y"),"%d/%m/%Y") >= ' . $tgl_filter_1 . ' 
+				AND STR_TO_DATE(DATE_FORMAT(t_irna.PASIEN_KELUAR,"%d/%m/%Y"),"%d/%m/%Y") <= ' . $tgl_filter_2;			
+}
+$qry_pasien = 'SELECT t_rawat.RAWAT_ID,t_rawat.NOMR,m_pasien.NAMA_PASIEN,
+				DATE_FORMAT(m_pasien.TGL_LAHIR,"%d/%m/%Y") AS TGL_LAHIR,
+				DATE_FORMAT(t_rawat.TANGGAL_DAFTAR,"%d/%m/%Y") AS TGL_MASUK,
+				DATE_FORMAT(t_rawat.PASIEN_KELUAR,"%d/%m/%Y") AS TGL_KELUAR,
+				m_pasien.JNS_KELAMIN,m_unit.NAMA_UNIT,m_ruang.NAMA_RUANG,
+				m_pegawai.NAMA_PEGAWAI AS DOKTER_RJ,
+				m_pegawai2.NAMA_PEGAWAI AS DOKTER_RI,
+				GROUP_CONCAT(DISTINCT m_tarif.NAMA_TARIF) AS TINDAKAN_RJ,
+				GROUP_CONCAT(DISTINCT m_tarif2.NAMA_TARIF) AS TINDAKAN_RI
+				FROM (
+					SELECT t_irja.IRJA_ID AS RAWAT_ID,t_irja.NOMR,
+					t_irja.TANGGAL_DAFTAR,t_irja.PASIEN_KELUAR,
+					t_irja.UNIT_ID,NULL AS RUANG_ID,
+					t_irja.PEGAWAI_ID AS DOKTER_RJ,NULL AS DOKTER_RI,
+					t_irja_tarif.TARIF_ID AS TARIF_RJ,NULL AS TARIF_RI
+					FROM t_irja
+					LEFT JOIN t_irja_tarif ON (t_irja.IRJA_ID = t_irja_tarif.IRJA_ID
+					AND t_irja_tarif.NO_TARIF IS NOT NULL AND t_irja_tarif.ST_BATAL IS NULL)
+					WHERE t_irja.IRJA_ID NOT IN (SELECT t_irna.IRNA_ID FROM t_irna WHERE t_irna.NOMR = t_irja.NOMR
+					AND t_irna.NO_PENDAFTARAN IS NOT NULL AND t_irna.ST_BATAL IS NULL)
+					' . $tgl_filter_irja . '
+					AND t_irja.NO_PENDAFTARAN IS NOT NULL
+					AND t_irja.ST_BATAL IS NULL
+					AND t_irja.ST_BARU = "1"					
+					UNION ALL
+					SELECT t_irja.IRJA_ID AS RAWAT_ID,t_irja.NOMR,
+					t_irja.TANGGAL_DAFTAR,t_irna.PASIEN_KELUAR,
+					t_irja.UNIT_ID,t_irna.RUANG_ID,
+					t_irja.PEGAWAI_ID AS DOKTER_RJ,t_irna.PEGAWAI_ID AS DOKTER_RI,
+					t_irja_tarif.TARIF_ID AS TARIF_RJ,t_irna_tarif.TARIF_ID AS TARIF_RI
+					FROM t_irja
+					INNER JOIN t_irna ON (t_irja.IRJA_ID = t_irna.IRNA_ID)
+					LEFT JOIN t_irja_tarif ON (t_irja.IRJA_ID = t_irja_tarif.IRJA_ID
+					AND t_irja_tarif.NO_TARIF IS NOT NULL AND t_irja_tarif.ST_BATAL IS NULL)
+					LEFT JOIN t_irna_tarif ON (t_irna.IRNA_ID = t_irna_tarif.IRNA_ID
+					AND t_irna_tarif.NO_TARIF IS NOT NULL AND (t_irna_tarif.ST_BAYAR = "Lunas" 
+					OR t_irna_tarif.ST_BAYAR = "" OR t_irna_tarif.ST_BAYAR IS NULL))
+					WHERE 1 ' . $tgl_filter_irna . '
+					AND t_irna.NO_PENDAFTARAN IS NOT NULL 
+					AND t_irna.ST_BATAL IS NULL
+					AND t_irja.ST_BARU = "1"					
+				) t_rawat
+				INNER JOIN m_pasien ON (t_rawat.NOMR = m_pasien.NOMR)
+				LEFT JOIN m_unit ON (t_rawat.UNIT_ID = m_unit.UNIT_ID)
+				LEFT JOIN m_ruang ON (t_rawat.RUANG_ID = m_ruang.RUANG_ID)
+				LEFT JOIN m_pegawai ON (t_rawat.DOKTER_RJ = m_pegawai.PEGAWAI_ID)
+				LEFT JOIN m_pegawai m_pegawai2 ON (t_rawat.DOKTER_RI = m_pegawai2.PEGAWAI_ID)
+				LEFT JOIN m_tarif ON (t_rawat.TARIF_RJ = m_tarif.TARIF_ID 
+					AND m_tarif.KODE_TARIF_GROUP IN (' . $arr_tindakan . '))
+				LEFT JOIN m_tarif m_tarif2 ON (t_rawat.TARIF_RI = m_tarif2.TARIF_ID 
+					AND m_tarif2.KODE_TARIF_GROUP IN (' . $arr_tindakan . '))	
+				WHERE 1 ';
+
+if(!empty($searchkey)){
+	$searchkey = str_replace(' ', '%', $searchkey);
+	$qry_pasien = $qry_pasien . ' AND CONCAT(m_pasien.NOMR,m_pasien.NAMA_PASIEN) LIKE "%' . $searchkey . '%" ';
+}	
+if (!empty($ruang_id)) {
+    $qry_pasien = $qry_pasien . ' AND m_ruang.BANGSAL = "' . $ruang_id . '" ';
+}
+if (!empty($unit_id)) {
+    $qry_pasien = $qry_pasien . ' AND m_unit.UNIT_ID	= "' . $unit_id . '" ';
+}
+$qry_pasien = $qry_pasien . 'GROUP BY t_rawat.RAWAT_ID
+					ORDER BY t_rawat.RAWAT_ID';
+
+$extparam = '&searchkey=' . $searchkey . '&tgl_1=' . $tgl_1 . '&tgl_2=' . $tgl_2 . '&unit_id=' . $unit_id . '&ruang_id=' . $ruang_id;
+?>
+<table border="1" class="tableData" id="tfhover" >
+    <tr>
+        <th>No</th>
+		<th>Tgl Masuk</th>
+		<th>Tgl Keluar</th>
+        <th>Nomor MR</th>
+        <th>Nama Pasien</th>
+        <th>Jenis Kelamin</th>
+        <th>Umur</th>
+        <th>Unit - Ruang</th>
+		<th>Dokter</th>
+        <th>Tindakan</th>
+    </tr>
+    <?
+    $no = 0;
+    $pager = new PS_Pagination($connect, $qry_pasien, 20, 5, $extparam, 'index.php?link=' . $_REQUEST['link']);
+    $rs = $pager->paginate();
+    if (!$rs)
+        die(mysql_error());
+    while ($data = mysql_fetch_array($rs)) {
+        $id = $data['RAWAT_ID'];
+        ?>
+        <tr>
+            <td align="center"><?
+    $no = ($no + 1);
+    if (isset($_GET['page'])) {
+        if ($_GET['page'] == 0) {
+            $hal = 0;
+        } else {
+            $hal = $_GET['page'] - 1;
+        }
+    } else {
+        $hal = 0;
+    }
+    echo ($hal * 20) + $no;
+        ?></td>
+            <td align="center"><?php echo $data['TGL_MASUK']; ?></td>
+			<td align="center"><?php echo $data['TGL_KELUAR']; ?></td>
+            <td align="center"><?php echo formatNoMR($data['NOMR']); ?></td>
+            <td><?php echo $data['NAMA_PASIEN']; ?></td>
+            <td><?php echo jenisKelamin($data['JNS_KELAMIN']); ?></td>
+            <td><?php echo getUmurDaftar($data['TGL_LAHIR'],$data['TGL_MASUK']); ?></td>
+			<td><?php $nama_unit = $data['NAMA_UNIT'];
+			if($data['NAMA_RUANG'] != '') $nama_unit .= '-' . $data['NAMA_RUANG']; 
+			echo $nama_unit; ?></td>
+			<td><?php $nama_dokter = $data['DOKTER_RJ'];
+			if($data['DOKTER_RI'] != '') $nama_dokter .= '-' . $data['DOKTER_RI']; 
+			echo $nama_dokter; ?></td>
+			<td><?php $tindakan =  $data['TINDAKAN_RJ'];
+				if($tindakan != ''){
+					$tindakan .= ',' . $data['TINDAKAN_RI'];
+				}else{
+					$tindakan .= $data['TINDAKAN_RI'];
+				}
+			echo $tindakan; ?></td>
+        </tr>
+        <?
+    }
+    ?>
+</table>
+<table width="100%" border="0" height="50%" class="tableNav" >
+            <tr >
+                <td align="right" valign="middle" >
+                    <div style="background-color:#fff; height:80%; width:30%">
+                        <table width="100%" align="center" height="100%" class="tableNavSub">
+                            <tr>
+								<td align="center">
+                                    <?php
+                                    echo $pager->renderSummary();
+                                    ?>							
+                                </td>
+                                <td align="center">
+                                    <?php
+                                    echo $pager->renderFirst();
+                                    ?>							
+                                </td>
+                                <td align="center">
+                                    <?
+                                    echo $pager->renderPrev();
+                                    ?>							
+                                </td>
+                                <td align="center">
+                                    <?
+                                    echo $pager->renderNav();
+                                    ?>							
+                                </td>
+                                <td align="center">
+                                    <?
+                                    echo $pager->renderNext();
+                                    ?>							
+                                </td>
+                                <td align="center">
+                                    <?
+                                    echo $pager->renderLast();
+                                    ?>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                </td>
+            </tr>
+        </table>

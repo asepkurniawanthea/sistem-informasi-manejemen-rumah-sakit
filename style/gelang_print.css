@@ -1,0 +1,70 @@
+/*
+Relative fonts defined in Body
+*/
+
+BODY, DIV, TD, P, .text, .largetext
+{
+    FONT-WEIGHT: normal;
+    FONT-SIZE: 12pt;
+    COLOR: #000000;
+    LINE-HEIGHT: normal;
+    FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif;
+    MARGIN-TOP: 15px;    
+    MARGIN-LEFT: 355px;
+    MARGIN-RIGHT: 0px;
+}
+
+#TopLayer 
+{
+	display:none; 
+}
+
+
+#TitleLayer 
+{
+	position:absolute; 
+	width:600px; 
+	height:45px; 
+	z-index:2; 
+	left: 20px; 
+	top: 60px; 
+	background-color: #000000; 
+	layer-background-color: #000000; 
+	border: 1px none #000000;
+}
+
+
+#TextLayer
+{
+	position:absolute; 
+	width:750px; 
+	height:100px; 
+	z-index:3; 
+	left: 0px; 
+	top: 1px;
+ 
+}
+
+
+#LeftLayer{
+	display:none;
+}
+
+
+A:link
+{
+    COLOR: midnightblue;
+    TEXT-DECORATION: underline;
+}
+
+A:hover
+{
+    COLOR: deepskyblue;
+}
+
+A:visited
+{
+    COLOR: midnightblue;
+    TEXT-DECORATION: underline;
+}
+
